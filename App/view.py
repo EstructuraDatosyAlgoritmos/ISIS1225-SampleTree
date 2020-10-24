@@ -22,7 +22,6 @@
 
 import sys
 import config
-from DISClib.ADT import list as lt
 from App import controller
 assert config
 
@@ -38,7 +37,7 @@ operación seleccionada.
 # ___________________________________________________
 
 
-crimefile = 'crime-utf8.csv'
+crimefile = 'us_accidents_small.csv'
 
 # ___________________________________________________
 #  Menu principal
@@ -53,6 +52,7 @@ def printMenu():
     print("2- Cargar información de crimenes")
     print("3- Consultar crimenes en un rango de fechas")
     print("4- Consultar crimenes por codigo y fecha")
+    print("5- Consultar crimenes por severidad y un rango de horas")
     print("0- Salir")
     print("*******************************************")
 
@@ -73,17 +73,17 @@ while True:
         print("\nCargando información de crimenes ....")
         controller.loadData(cont, crimefile)
         print('Crimenes cargados: ' + str(controller.crimesSize(cont)))
-        print('Altura del arbol: ' + str(controller.indexHeight(cont)))
-        print('Elementos en el arbol: ' + str(controller.indexSize(cont)))
-        print('Menor Llave: ' + str(controller.minKey(cont)))
-        print('Mayor Llave: ' + str(controller.maxKey(cont)))
+        print('Altura del arbol: ' + str(controller.indexHeight_hors(cont)))
+        print('Elementos en el arbol: ' + str(controller.indexSize_hours(cont)))
+        print('Menor Llave: ' + str(controller.minKey_hours(cont)))
+        print('Mayor Llave: ' + str(controller.maxKey_hours(cont)))
 
     elif int(inputs[0]) == 3:
         print("\nBuscando crimenes en un rango de fechas: ")
         initialDate = input("Rango Inicial (YYYY-MM-DD): ")
-        finalDate = input("Rango Inicial (YYYY-MM-DD): ")
-        lst = controller.getCrimesByRange(cont, initialDate, finalDate)
-        print("\nTotal de llaves en el rango: " + str(lt.size(lst)))
+        finalDate = input("Rango Final (YYYY-MM-DD): ")
+        total = controller.getCrimesByRange(cont, initialDate, finalDate)
+        print("\nTotal de crimenes en el rango de fechas: " + str(total))
 
     elif int(inputs[0]) == 4:
         print("\nBuscando crimenes x grupo de ofensa en una fecha: ")
@@ -93,7 +93,14 @@ while True:
                                                       offensecode)
         print("\nTotal de ofensas tipo: " + offensecode + " en esa fecha:  " +
               str(numoffenses))
-
+              
+    elif int(inputs[0]) == 5:
+        print("\nBuscando crimenes x severidad en una rango de horas: ")
+        initialHour = input("Hora inicial (HH:MM:ss): ")
+        finalHour= input("Hora final (HH:MM:ss): ")
+        severity = input("Ingrese la severidad (1-4): ")
+        total = controller.getCrimesByRange_hours(cont, initialHour,finalHour)
+        print("\nTotal de crimenes en el rango de horas: " + str(total))
     else:
         sys.exit(0)
 sys.exit(0)
