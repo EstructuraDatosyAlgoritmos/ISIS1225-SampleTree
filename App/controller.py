@@ -43,7 +43,8 @@ def init():
     Llama la funcion de inicializacion  del modelo.
     """
     # catalog es utilizado para interactuar con el modelo
-    analyzer = model.newAnalyzer()
+    #analyzer = model.newAnalyzer()
+    analyzer=model.hourAnalyzer()
     return analyzer
 
 
@@ -57,10 +58,11 @@ def loadData(analyzer, crimesfile):
     Carga los datos de los archivos CSV en el modelo
     """
     crimesfile = cf.data_dir + crimesfile
-    input_file = csv.DictReader(open(crimesfile, encoding="utf-8"),
+    input_file = csv.DictReader(open(crimesfile, encoding=None),
                                 delimiter=",")
     for crime in input_file:
         model.addCrime(analyzer, crime)
+        
     return analyzer
 
 # ___________________________________________________
@@ -81,12 +83,23 @@ def indexHeight(analyzer):
     """
     return model.indexHeight(analyzer)
 
+def indexHeight_hors(analyzer):
+    """
+    Altura del indice (arbol)
+    """
+    return model.indexHeight_hours(analyzer)
 
 def indexSize(analyzer):
     """
     Numero de nodos en el arbol
     """
     return model.indexSize(analyzer)
+
+def indexSize_hours(analyzer):
+    """
+    Numero de nodos en el arbol
+    """
+    return model.indexSize_hours(analyzer)
 
 
 def minKey(analyzer):
@@ -95,12 +108,24 @@ def minKey(analyzer):
     """
     return model.minKey(analyzer)
 
+def minKey_hours(analyzer):
+    """
+    La menor llave del arbol
+    """
+    return model.minKey_hours(analyzer)
+
 
 def maxKey(analyzer):
     """
     La mayor llave del arbol
     """
     return model.maxKey(analyzer)
+
+def maxKey_hours(analyzer):
+    """
+    La mayor llave del arbol
+    """
+    return model.maxKey_hours(analyzer)
 
 
 def getCrimesByRange(analyzer, initialDate, finalDate):
@@ -112,6 +137,15 @@ def getCrimesByRange(analyzer, initialDate, finalDate):
     return model.getCrimesByRange(analyzer, initialDate.date(),
                                   finalDate.date())
 
+def getCrimesByRange_hours(analyzer, initialHour, finalHour):
+    """
+    Retorna el total de crimenes en un rango de horas
+    """
+    initialHour = datetime.datetime.strptime(initialHour, '%H:%M:%S')
+    finalHour = datetime.datetime.strptime(finalHour, '%H:%M:%S')
+    return model.getCrimesByRange_hours(analyzer, initialHour.time(),
+                                  finalHour.time())
+
 
 def getCrimesByRangeCode(analyzer, initialDate,
                          offensecode):
@@ -122,3 +156,4 @@ def getCrimesByRangeCode(analyzer, initialDate,
     initialDate = datetime.datetime.strptime(initialDate, '%Y-%m-%d')
     return model.getCrimesByRangeCode(analyzer, initialDate.date(),
                                       offensecode)
+

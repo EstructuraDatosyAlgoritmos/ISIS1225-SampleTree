@@ -62,6 +62,23 @@ def newAnalyzer():
                                       comparefunction=compareDates)
     return analyzer
 
+def hourAnalyzer():
+    """ Inicializa el analizador
+
+    Crea una lista vacia para guardar todos los crimenes
+    Se crean indices (Maps) por los siguientes criterios:
+    -Horas
+
+    Retorna el analizador inicializado.
+    """
+    analyzer = {'crimes': None,
+                'hourIndex': None
+                }
+
+    analyzer['crimes'] = lt.newList('SINGLE_LINKED', compareIds)
+    analyzer['hourIndex'] = om.newMap(omaptype='RBT',
+                                      comparefunction=compareDates)
+    return analyzer
 
 # Funciones para agregar informacion al catalogo
 
@@ -70,9 +87,11 @@ def addCrime(analyzer, crime):
     """
     """
     lt.addLast(analyzer['crimes'], crime)
-    updateDateIndex(analyzer['dateIndex'], crime)
+   
+    updateHourIndex(analyzer['hourIndex'], crime)
     return analyzer
 
+   
 
 def updateDateIndex(map, crime):
     """
@@ -95,6 +114,39 @@ def updateDateIndex(map, crime):
     return map
 
 
+
+def updateHourIndex(map, crime):
+    """
+    Se toma la hora del crimen y se busca si ya existe en el arbol
+    dicha fecha.  Si es asi, se adiciona a su lista de crimenes
+    y se actualiza el indice de tipos de crimenes.
+
+    Si no se encuentra creado un nodo para esa hora en el arbol
+    se crea y se actualiza el indice de tipos de crimenes
+    """
+    occurreddate = crime['Start_Time']
+    crimedate = datetime.datetime.strptime(occurreddate, '%Y-%m-%d %H:%M:%S')
+    if crimedate.time()>=datetime.time(0,0,0) and crimedate.time() < datetime.time(0,15,0):
+        crimedate=crimedate.replace(minute=00,second=00)
+    elif crimedate.time()>=datetime.time(0,15,0) and crimedate.time() < datetime.time(0,30,0) or crimedate.time()>=datetime.time(0,30,0) and crimedate.time() < datetime.time(0,45,0):
+        crimedate=crimedate.replace(minute=30,second=00)
+    else:
+        sum_hour=1
+        new_hour=datetime.timedelta(hours=sum_hour)
+        plus_hour=crimedate+ new_hour
+        crimedate=plus_hour
+        crimedate=crimedate.replace(minute=00,second=00)
+   
+    entry = om.get(map, crimedate)
+    if entry is None:
+        hourentry = newDataEntry_hours(crime)
+        om.put(map, crimedate, hourentry)
+    else:
+        hourentry = me.getValue(entry)
+    addHourIndex(hourentry, crime)
+    return map
+
+
 def addDateIndex(datentry, crime):
     """
     Actualiza un indice de tipo de crimenes.  Este indice tiene una lista
@@ -105,15 +157,36 @@ def addDateIndex(datentry, crime):
     lst = datentry['lstcrimes']
     lt.addLast(lst, crime)
     offenseIndex = datentry['offenseIndex']
-    offentry = m.get(offenseIndex, crime['OFFENSE_CODE_GROUP'])
+    offentry = m.get(offenseIndex, crime['Severity'])
     if (offentry is None):
-        entry = newOffenseEntry(crime['OFFENSE_CODE_GROUP'], crime)
+        entry = newOffenseEntry(crime['Severity'], crime)
         lt.addLast(entry['lstoffenses'], crime)
-        m.put(offenseIndex, crime['OFFENSE_CODE_GROUP'], entry)
+        m.put(offenseIndex, crime['Severity'], entry)
     else:
         entry = me.getValue(offentry)
         lt.addLast(entry['lstoffenses'], crime)
     return datentry
+
+
+def addHourIndex(hourentry, crime):
+    """
+    Actualiza un indice de severidad de crimenes.  Este indice tiene una lista
+    de crimenes y una tabla de hash cuya llave es la severidad de crimen y
+    el valor es una lista con los crimenes de dicho severidad en la hora que
+    se está consultando (dada por el nodo del arbol)
+    """
+    lst = hourentry['lstcrimes']
+    lt.addLast(lst, crime)
+    offenseIndex = hourentry['offenseIndex']
+    offentry = m.get(offenseIndex, crime['Severity'])
+    if (offentry is None):
+        entry = newOffenseEntry(crime['Severity'], crime)
+        lt.addLast(entry['lstoffenses'], crime)
+        m.put(offenseIndex, crime['Severity'], entry)
+    else:
+        entry = me.getValue(offentry)
+        lt.addLast(entry['lstoffenses'], crime)
+    return hourentry
 
 
 def newDataEntry(crime):
@@ -128,6 +201,19 @@ def newDataEntry(crime):
     entry['lstcrimes'] = lt.newList('SINGLE_LINKED', compareDates)
     return entry
 
+
+
+def newDataEntry_hours(crime):
+    """
+    Crea una entrada en el indice por horas, es decir en el arbol
+    binario.
+    """
+    entry = {'offenseIndex': None, 'lstcrimes': None}
+    entry['offenseIndex'] = m.newMap(numelements=30,
+                                     maptype='PROBING',
+                                     comparefunction=compareOffenses)
+    entry['lstcrimes'] = lt.newList('SINGLE_LINKED', compareHours)
+    return entry
 
 def newOffenseEntry(offensegrp, crime):
     """
@@ -158,6 +244,11 @@ def indexHeight(analyzer):
     """
     return om.height(analyzer['dateIndex'])
 
+def indexHeight_hours(analyzer):
+    """
+    Altura del arbol
+    """
+    return om.height(analyzer['hourIndex'])
 
 def indexSize(analyzer):
     """
@@ -165,6 +256,11 @@ def indexSize(analyzer):
     """
     return om.size(analyzer['dateIndex'])
 
+def indexSize_hours(analyzer):
+    """
+    Numero de elementos en el indice
+    """
+    return om.size(analyzer['hourIndex'])
 
 def minKey(analyzer):
     """
@@ -172,12 +268,23 @@ def minKey(analyzer):
     """
     return om.minKey(analyzer['dateIndex'])
 
+def minKey_hours(analyzer):
+    """
+    Llave mas pequena
+    """
+    return om.minKey(analyzer['hourIndex'])
 
 def maxKey(analyzer):
     """
     Llave mas grande
     """
     return om.maxKey(analyzer['dateIndex'])
+    
+def maxKey_hours(analyzer):
+    """
+    Llave mas grande
+    """
+    return om.maxKey(analyzer['hourIndex'])
 
 
 def getCrimesByRange(analyzer, initialDate, finalDate):
@@ -190,6 +297,19 @@ def getCrimesByRange(analyzer, initialDate, finalDate):
     while (it.hasNext(lstiterator)):
         lstdate = it.next(lstiterator)
         totcrimes += lt.size(lstdate['lstcrimes'])
+    return totcrimes
+
+
+def getCrimesByRange_hours(analyzer, initialHour, finalHour):
+    """
+    Retorna el numero de crimenes en un rago de horas.
+    """
+    lst = om.values(analyzer['hourIndex'], initialHour, finalHour)
+    lstiterator = it.newIterator(lst)
+    totcrimes = 0
+    while (it.hasNext(lstiterator)):
+        lsthour = it.next(lstiterator)
+        totcrimes += lt.size(lsthour['lstcrimes'])
     return totcrimes
 
 
@@ -231,6 +351,14 @@ def compareDates(date1, date2):
     if (date1 == date2):
         return 0
     elif (date1 > date2):
+        return 1
+    else:
+        return -1
+
+def compareHours(hour1,hour2):
+    if (hour1 == hour2):
+        return 0
+    elif (hour1 > hour2):
         return 1
     else:
         return -1
